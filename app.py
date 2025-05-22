@@ -195,18 +195,55 @@ def tutors_page():
         return redirect(url_for('tutors_page'))
     return render_template('tutors.html', tutors=tutors_data, user=user)
 
+def send_to_telegram(message):
+    """Отправка сообщения в Telegram"""
+    bot_token = app.config['TELEGRAM_BOT_TOKEN']
+    chat_id = app.config['TELEGRAM_CHAT_ID']
+    
+    if not bot_token or not chat_id:
+        logger.error("Telegram bot token or chat ID not configured")
+        return False
+        
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        response = requests.post(url, json=data)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error sending message to Telegram: {e}")
+        return False
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        name = request.form['name']
-        phone = request.form['phone']
-        email = request.form['email']
-        message = request.form['message']
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        message = request.form.get('message')
 
-        text = (f"Новая заявка:\nИмя: {name}\nТелефон: {phone}\n"
-                f"Email: {email}\nСообщение: {message}")
+        if not all([name, phone, email, message]):
+            flash('Пожалуйста, заполните все поля формы.', 'danger')
+            return redirect(url_for('contact'))
 
-        send_to_telegram(text)
+        text = f"""
+<b>Новая заявка с сайта!</b>
+
+<b>Имя:</b> {name}
+<b>Телефон:</b> {phone}
+<b>Email:</b> {email}
+<b>Сообщение:</b>
+{message}
+"""
+        if send_to_telegram(text):
+            flash('Ваше сообщение успешно отправлено!', 'success')
+        else:
+            flash('Произошла ошибка при отправке сообщения. Пожалуйста, попробуйте позже.', 'danger')
+            
         return redirect(url_for('contact'))
 
     return render_template('contact.html', user=users.get(session.get('user_email')))
@@ -302,11 +339,6 @@ def logout():
     session.clear()
     flash('Вы успешно вышли из системы.', 'success')
     return redirect(url_for('home'))
-
-def send_to_telegram(message):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": message}
-    requests.post(url, data=payload)
 
 def is_admin():
     """Проверяет, является ли текущий пользователь администратором"""
