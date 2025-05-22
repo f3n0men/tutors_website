@@ -42,7 +42,9 @@ socketio = SocketIO(
     ping_interval=25000
 )
 
-db = SQLAlchemy(app)
+# Инициализация базы данных
+db = SQLAlchemy()
+db.init_app(app)
 migrate = Migrate(app, db)
 
 class UserReaction(db.Model):
