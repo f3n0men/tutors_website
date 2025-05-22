@@ -20,9 +20,11 @@ env = os.environ.get('FLASK_ENV', 'development')
 app.config.from_object(config[env])
 
 # Настройка базы данных
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
+if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
+    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'cfd6245c36bd276cff4769d9fce4cf0dbc056f4e1a014c912cb9d23507bb3efe'
+app.secret_key = os.environ.get('SECRET_KEY', 'cfd6245c36bd276cff4769d9fce4cf0dbc056f4e1a014c912cb9d23507bb3efe')
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
@@ -43,14 +45,8 @@ socketio = SocketIO(
 )
 
 # Инициализация базы данных
-db = SQLAlchemy()
-db.init_app(app)
-
-with app.app_context():
-    if db.engine.url.drivername == 'sqlite':
-        migrate = Migrate(app, db, render_as_batch=True)
-    else:
-        migrate = Migrate(app, db)
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 class UserReaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
