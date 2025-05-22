@@ -48,6 +48,11 @@ socketio = SocketIO(
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# Создание таблиц при запуске
+with app.app_context():
+    db.create_all()
+    logger.info("Таблицы базы данных созданы")
+
 class UserReaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
