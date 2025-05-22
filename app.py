@@ -45,7 +45,12 @@ socketio = SocketIO(
 # Инициализация базы данных
 db = SQLAlchemy()
 db.init_app(app)
-migrate = Migrate(app, db)
+
+with app.app_context():
+    if db.engine.url.drivername == 'sqlite':
+        migrate = Migrate(app, db, render_as_batch=True)
+    else:
+        migrate = Migrate(app, db)
 
 class UserReaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
