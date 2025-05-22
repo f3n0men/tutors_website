@@ -1,0 +1,100 @@
+body {
+    font-family: 'arial black';
+    background-color: #f8f9fa;
+    color: #343a40;
+    margin: 0;
+    height: 100%;
+    background-image: url('../static/background2.png');
+}
+
+header {
+    background-color: #007bff !important;
+}
+
+.hero-section {
+    width: 100vw; /* Растягиваем на всю ширину */
+    height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 0;
+    left: 50%; /* Центрирование */
+    right: 50%; /* Центрирование */
+    margin-left: -50vw; /* Сдвиг влево на половину ширины окна */
+    margin-right: -50vw; /* Сдвиг вправо на половину ширины окна */
+}
+
+.hero-section h1 {
+    margin-top: -20px; /* Поднимаем заголовок вверх */
+    color: #0e0e3d;
+}
+
+.hero-section p {
+    margin: 0;
+    margin-bottom: 75px;
+}
+
+.hero-section .btn-light {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #007bff;
+    border-color: #007bff;
+    transition: background-color 0.3s, color 0.3s;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.hero-section .btn-light:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+nav ul li a {
+    transition: background-color 0.3s;
+}
+
+nav ul li a:hover {
+    background-color: #0056b3;
+}
+
+footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+}
+
+.jumbotron {
+    background-color: #e9ecef !important;
+    border-radius: 15px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.card {
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-img-top {
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    width: 100%; /* Устанавливаем ширину изображения */
+    height: 350px; /* Фиксированная высота для всех изображений */
+    object-fit: cover; /* Обрезаем изображение, чтобы оно покрывало всю область */
+}
+
+.lead {
+    color: #0e0e3d;
+}

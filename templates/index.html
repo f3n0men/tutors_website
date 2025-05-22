@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="hero-section text-center text-white d-flex flex-column justify-content-center align-items-center">
+    <h1 class="display-4">Ваш успех — наша цель!</h1>
+    <p class="lead">Лучшие репетиторы для достижения ваших образовательных целей.</p>
+    <a class="btn btn-light btn-lg" href="{{ url_for('tutors_page') }}" role="button">Найти репетитора</a>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+# Системные файлы Git
+.git
+.gitignore
+
+# Python кэш и временные файлы
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Виртуальные окружения
+.env
+.venv
+env/
+venv/
+
+# Директории с данными
+instance/
+
+# Тестовые файлы и отчеты
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Файлы сборки
+dist/
+build/
+*.egg-info/ 

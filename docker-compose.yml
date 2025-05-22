@@ -1,0 +1,18 @@
+# Версия Docker Compose
+version: '3.8'
+
+services:
+  web:
+    build: .
+    # Проброс портов: внешний:внутренний
+    ports:
+      - "5000:5000"
+    # Монтирование локальной директории в контейнер
+    volumes:
+      - .:/app
+    # Переменные окружения для Flask
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    # Автоматический перезапуск контейнера
+    restart: always 
