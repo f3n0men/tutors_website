@@ -3,38 +3,76 @@
 {% block title %}Контакты{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Контакты</h1>
-<div class="row">
-    <div class="col-md-6">
-        <p>Адрес: ул. Генерала Рычагова, д. 15, г. Москва</p>
-        <p>Телефон: +7 (915) 415-22-39</p>
-        <p>Электронная почта: volodya.vvu@gmail.com</p>
-        <h2 class="mt-4">Форма обратной связи</h2>
-        <form action="{{ url_for('contact') }}" method="POST">
-            <div class="form-group">
-                <label for="name">Имя:</label>
-                <input type="text" class="form-control" id="name" name="name" required>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-center">Связаться с нами</h2>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('contact') }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Ваше имя</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Телефон</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Сообщение</label>
+                            <textarea class="form-control" id="message" name="message" rows="5" required></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Отправить</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="phone">Телефон:</label>
-                <input type="text" class="form-control" id="phone" name="phone" required>
-            </div>
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" class="form-control" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="message">Сообщение:</label>
-                <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Отправить</button>
-        </form>
-    </div>
-    <div class="col-md-6">
-        <h2 class="mb-3">Наше местоположение</h2>
-        <div id="map-container" style="height: 300px;">
-            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2240.182659331225!2d37.5356333766002!3d55.842144785106505!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x46b537c69d23fef9%3A0x269f4d17839e2f47!2z0YPQuy4g0JPQtdC90LXRgNCw0LvQsCDQoNGL0YfQsNCz0L7QstCwLCAxNSwg0JzQvtGB0LrQstCwLCAxMjUxODM!5e0!3m2!1sru!2sru!4v1741888655254!5m2!1sru!2sru" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         </div>
     </div>
 </div>
+
+<style>
+.card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary {
+    padding: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.alert {
+    margin-bottom: 1.5rem;
+}
+</style>
 {% endblock %}
