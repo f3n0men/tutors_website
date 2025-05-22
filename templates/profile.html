@@ -3,24 +3,86 @@
 {% block title %}Профиль{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2>Профиль</h2>
-    <div class="card">
-        <div class="card-body text-center">
-            <img src="{{ url_for('static', filename='avatars/' + user.avatar) if user.avatar else url_for('static', filename='avatar.jpg') }}" class="rounded-circle img-thumbnail" alt="Аватарка" style="width: 150px; height: 150px;">
-            <h5 class="card-title mt-3">{{ user.name }}</h5>
-            <p class="card-text">Email: {{ user.email }}</p>
-            <p class="card-text">Роль: {{ user.role }}</p>
-            {% if user.rating %}
-                <p class="card-text">Рейтинг: {{ user.rating }}</p>
-            {% endif %}
-            <form action="{{ url_for('profile') }}" method="POST" enctype="multipart/form-data">
-                <div class="form-group mt-3">
-                    <input type="file" class="form-control-file" id="avatar" name="avatar" accept="image/*">
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-center">Профиль пользователя</h2>
                 </div>
-                <button type="submit" class="btn btn-primary mt-2">Обновить аватар</button>
-            </form>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <div class="text-center mb-4">
+                        {% if user.avatar %}
+                            <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}" 
+                                 alt="Аватар пользователя" 
+                                 class="rounded-circle"
+                                 style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='default_avatar.png') }}" 
+                                 alt="Аватар по умолчанию"
+                                 class="rounded-circle"
+                                 style="width: 150px; height: 150px; object-fit: cover;">
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="mb-4">
+                        <div class="mb-3">
+                            <label for="avatar" class="form-label">Изменить аватар</label>
+                            <input type="file" class="form-control" id="avatar" name="avatar" accept="image/*">
+                            <small class="text-muted">Поддерживаемые форматы: PNG, JPG, JPEG, GIF</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Обновить аватар</button>
+                    </form>
+
+                    <div class="user-info">
+                        <h3>Информация о пользователе</h3>
+                        <p><strong>Имя:</strong> {{ user.name }}</p>
+                        <p><strong>Email:</strong> {{ email }}</p>
+                        <p><strong>Роль:</strong> {{ user.role }}</p>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('logout') }}" class="btn btn-danger">Выйти</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.card {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.user-info {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.user-info p {
+    margin-bottom: 0.5rem;
+}
+
+.btn-danger {
+    padding: 0.5rem 2rem;
+}
+</style>
 {% endblock %}

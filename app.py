@@ -106,7 +106,13 @@ def allowed_file(filename):
 
 @app.route('/')
 def home():
-    return render_template('index.html', user=users.get(session.get('user_email')))
+    user_email = session.get('user_email')
+    user = users.get(user_email) if user_email else None
+    # Если в сессии есть email, но пользователя нет - очищаем сессию
+    if user_email and not user:
+        session.clear()
+        return redirect(url_for('home'))
+    return render_template('index.html', user=user)
 
 @socketio.on('connect')
 def handle_connect():
@@ -180,7 +186,13 @@ def handle_socket_reaction(data):
 
 @app.route('/tutors')
 def tutors_page():
-    return render_template('tutors.html', tutors=tutors_data, user=users.get(session.get('user_email')))
+    user_email = session.get('user_email')
+    user = users.get(user_email) if user_email else None
+    # Если в сессии есть email, но пользователя нет - очищаем сессию
+    if user_email and not user:
+        session.clear()
+        return redirect(url_for('tutors_page'))
+    return render_template('tutors.html', tutors=tutors_data, user=user)
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -244,24 +256,51 @@ def login():
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    if 'user_email' in session:
-        user = users.get(session['user_email'])
-        if request.method == 'POST':
-            if 'avatar' in request.files:
-                file = request.files['avatar']
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                    user['avatar'] = filename
-                    flash('Аватар успешно обновлен!', 'success')
-                    return redirect(url_for('profile'))
+    user_email = session.get('user_email')
+    if not user_email:
+        flash('Необходимо войти в систему.', 'danger')
+        return redirect(url_for('login'))
 
-        return render_template('profile.html', user=user)
-    return redirect(url_for('login'))
+    user = users.get(user_email)
+    if not user:
+        session.clear()
+        flash('Пользователь не найден.', 'danger')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        if 'avatar' in request.files:
+            file = request.files['avatar']
+            if file and file.filename:
+                if allowed_file(file.filename):
+                    try:
+                        # Создаем папку для аватаров, если её нет
+                        avatars_folder = os.path.join('static', 'avatars')
+                        if not os.path.exists(avatars_folder):
+                            os.makedirs(avatars_folder)
+                        
+                        # Генерируем уникальное имя файла
+                        filename = secure_filename(f"{user_email}_{file.filename}")
+                        filepath = os.path.join(avatars_folder, filename)
+                        
+                        # Сохраняем файл
+                        file.save(filepath)
+                        
+                        # Обновляем информацию о пользователе
+                        user['avatar'] = filename
+                        save_data(USERS_FILE, users)
+                        
+                        flash('Аватар успешно обновлен!', 'success')
+                    except Exception as e:
+                        logger.error(f"Error saving avatar: {e}")
+                        flash('Ошибка при сохранении аватара.', 'danger')
+                else:
+                    flash('Недопустимый формат файла. Разрешены только изображения (png, jpg, jpeg, gif).', 'danger')
+
+    return render_template('profile.html', user=user, email=user_email)
 
 @app.route('/logout')
 def logout():
-    session.pop('user_email', None)
+    session.clear()
     flash('Вы успешно вышли из системы.', 'success')
     return redirect(url_for('home'))
 
