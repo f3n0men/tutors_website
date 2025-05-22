@@ -1,6 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -40,66 +38,39 @@ socketio = SocketIO(
     ping_interval=25000
 )
 
-# Настройка базы данных
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Инициализация базы данных
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-# Создание таблиц при запуске
-with app.app_context():
-    db.create_all()
-    logger.info("Таблицы базы данных созданы")
-
-class UserReaction(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    tutor_id = db.Column(db.Integer, db.ForeignKey('tutor.id'), nullable=False)
-    reaction_type = db.Column(db.String(10), nullable=False)  # 'like' или 'dislike'
-    
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'tutor_id', name='unique_user_tutor_reaction'),
-    )
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(50), nullable=False)
-    rating = db.Column(db.Float, nullable=True)
-    avatar = db.Column(db.String(100), nullable=True)
-    reactions = db.relationship('UserReaction', backref='user', lazy=True)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Tutor(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    rating = db.Column(db.Float, nullable=False)
-    subjects = db.Column(db.String(200), nullable=False)
-    image = db.Column(db.String(100), nullable=False)
-    likes = db.Column(db.Integer, default=0)
-    dislikes = db.Column(db.Integer, default=0)
-    reactions = db.relationship('UserReaction', backref='tutor', lazy=True)
-
 # Данные о репетиторах
 tutors = [
-    {"name": "Иван Иванов", "rating": 4.9, "subjects": "Математика, Физика", "image": "tutor1.jpg", "likes": 0, "dislikes": 0},
-    {"name": "Мария Петрова", "rating": 4.7, "subjects": "Английский язык", "image": "tutor2.jpg", "likes": 0, "dislikes": 0},
-    {"name": "Алексей Сидоров", "rating": 4.8, "subjects": "Информатика", "image": "tutor3.jpg", "likes": 0, "dislikes": 0},
+    {
+        "id": 1,
+        "name": "Иван Иванов",
+        "rating": 4.9,
+        "subjects": "Математика, Физика",
+        "image": "tutor1.jpg",
+        "likes": 0,
+        "dislikes": 0
+    },
+    {
+        "id": 2,
+        "name": "Мария Петрова",
+        "rating": 4.7,
+        "subjects": "Английский язык",
+        "image": "tutor2.jpg",
+        "likes": 0,
+        "dislikes": 0
+    },
+    {
+        "id": 3,
+        "name": "Алексей Сидоров",
+        "rating": 4.8,
+        "subjects": "Информатика",
+        "image": "tutor3.jpg",
+        "likes": 0,
+        "dislikes": 0
+    }
 ]
 
-BOT_TOKEN = '8186615018:AAENdDsVYsPPCQHfdeG17t7kENBrblWXupU'
-CHAT_ID = '689163231'
+# Временное хранилище для пользователей (в реальном приложении должно быть в базе данных)
+users = {}
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -112,17 +83,6 @@ def home():
 @socketio.on('connect')
 def handle_connect():
     logger.info('Client connected')
-    # Отправляем текущие данные при подключении
-    try:
-        tutors = Tutor.query.all()
-        for tutor in tutors:
-            emit('reaction_update', {
-                'tutor_id': tutor.id,
-                'likes': tutor.likes,
-                'dislikes': tutor.dislikes
-            })
-    except Exception as e:
-        logger.error(f'Error sending initial data: {str(e)}')
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -134,56 +94,33 @@ def handle_socket_reaction(data):
     try:
         tutor_id = data.get('tutor_id')
         reaction_type = data.get('type')
-        user_id = data.get('user_id')
         
-        if not all([tutor_id, reaction_type, user_id]):
+        if not all([tutor_id, reaction_type]):
             logger.error('Missing required data')
             return
+            
+        # Находим репетитора по ID
+        tutor = next((t for t in tutors if t['id'] == tutor_id), None)
         
-        tutor = Tutor.query.get(tutor_id)
-        user = User.query.get(user_id)
-        
-        if not tutor or not user:
-            logger.error('Tutor or user not found')
+        if not tutor:
+            logger.error('Tutor not found')
             return
             
-        # Проверяем, есть ли уже реакция от этого пользователя
-        existing_reaction = UserReaction.query.filter_by(
-            user_id=user_id,
-            tutor_id=tutor_id
-        ).first()
-        
-        if existing_reaction:
-            logger.info('User already reacted')
-            return
-            
-        # Создаем новую реакцию
-        new_reaction = UserReaction(
-            user_id=user_id,
-            tutor_id=tutor_id,
-            reaction_type=reaction_type
-        )
-        
         # Обновляем счетчики
         if reaction_type == 'like':
-            tutor.likes += 1
+            tutor['likes'] += 1
         elif reaction_type == 'dislike':
-            tutor.dislikes += 1
-        
-        db.session.add(new_reaction)
-        db.session.commit()
+            tutor['dislikes'] += 1
         
         # Отправляем обновление всем клиентам
         emit('reaction_update', {
             'tutor_id': tutor_id,
-            'likes': tutor.likes,
-            'dislikes': tutor.dislikes,
-            'user_id': user_id
+            'likes': tutor['likes'],
+            'dislikes': tutor['dislikes']
         }, broadcast=True)
         
     except Exception as e:
         logger.error(f'Error handling socket reaction: {str(e)}')
-        db.session.rollback()
 
 @app.route('/tutors')
 def tutors_page():
@@ -213,15 +150,16 @@ def register():
         password = request.form['password']
         role = request.form['role']
 
-        if User.query.filter_by(email=email).first():
+        if email in users:
             flash('Этот email уже зарегистрирован.', 'danger')
             return redirect(url_for('register'))
 
-        new_user = User(name=name, email=email, role=role)
-        new_user.set_password(password)
-
-        db.session.add(new_user)
-        db.session.commit()
+        users[email] = {
+            'name': name,
+            'password_hash': generate_password_hash(password),
+            'role': role,
+            'avatar': None
+        }
 
         flash('Регистрация успешна!', 'success')
         return redirect(url_for('login'))
@@ -234,10 +172,10 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        user = User.query.filter_by(email=email).first()
+        user = users.get(email)
 
-        if user and user.check_password(password):
-            session['user_id'] = user.id
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_email'] = email
             flash('Вход выполнен успешно!', 'success')
             return redirect(url_for('profile'))
         else:
@@ -247,86 +185,31 @@ def login():
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    if 'user_id' in session:
-        user = User.query.get(session['user_id'])
+    if 'user_email' in session:
+        user = users.get(session['user_email'])
         if request.method == 'POST':
             if 'avatar' in request.files:
                 file = request.files['avatar']
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                    user.avatar = filename
-                    db.session.commit()
+                    user['avatar'] = filename
                     flash('Аватар успешно обновлен!', 'success')
                     return redirect(url_for('profile'))
 
         return render_template('profile.html', user=user)
     return redirect(url_for('login'))
 
+@app.route('/logout')
+def logout():
+    session.pop('user_email', None)
+    flash('Вы успешно вышли из системы.', 'success')
+    return redirect(url_for('home'))
+
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message}
     requests.post(url, data=payload)
-
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    flash('Вы успешно вышли из системы.', 'success')
-    return redirect(url_for('home'))
-
-@app.route('/api/reaction', methods=['POST'])
-def handle_reaction():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-        
-    data = request.get_json()
-    tutor_id = data.get('tutor_id')
-    reaction_type = data.get('type')
-    user_id = session['user_id']
-    
-    if not all([tutor_id, reaction_type]):
-        return jsonify({'error': 'Missing data'}), 400
-        
-    try:
-        tutor = Tutor.query.get(tutor_id)
-        if not tutor:
-            return jsonify({'error': 'Tutor not found'}), 404
-            
-        # Проверяем, есть ли уже реакция от этого пользователя
-        existing_reaction = UserReaction.query.filter_by(
-            user_id=user_id,
-            tutor_id=tutor_id
-        ).first()
-        
-        if existing_reaction:
-            return jsonify({'error': 'Already reacted'}), 400
-            
-        # Создаем новую реакцию
-        new_reaction = UserReaction(
-            user_id=user_id,
-            tutor_id=tutor_id,
-            reaction_type=reaction_type
-        )
-        
-        # Обновляем счетчики
-        if reaction_type == 'like':
-            tutor.likes += 1
-        elif reaction_type == 'dislike':
-            tutor.dislikes += 1
-            
-        db.session.add(new_reaction)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'likes': tutor.likes,
-            'dislikes': tutor.dislikes
-        })
-        
-    except Exception as e:
-        logger.error(f'Error in handle_reaction: {str(e)}')
-        db.session.rollback()
-        return jsonify({'error': 'Server error'}), 500
 
 if __name__ == '__main__':
     # Настройка порта для Railway
