@@ -327,5 +327,11 @@ def handle_reaction():
         return jsonify({'error': 'Server error'}), 500
 
 if __name__ == '__main__':
+    # Настройка порта для Railway
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    if os.environ.get('FLASK_ENV') == 'production':
+        # В production используем gunicorn
+        app.run(host='0.0.0.0', port=port)
+    else:
+        # В development используем встроенный сервер Flask с socket.io
+        socketio.run(app, host='0.0.0.0', port=port, debug=True)
