@@ -69,7 +69,7 @@
                     <a class="dropdown-item" href="{{ url_for('home') }}">Главная</a>
                     <a class="dropdown-item" href="{{ url_for('tutors_page') }}">Репетиторы</a>
                     <a class="dropdown-item" href="{{ url_for('contact') }}">Контакты</a>
-                    {% if 'user_id' in session %}
+                    {% if 'user_email' in session %}
                         <a class="dropdown-item" href="{{ url_for('profile') }}">Профиль</a>
                         <a class="dropdown-item" href="{{ url_for('logout') }}">Выйти</a>
                     {% else %}

@@ -99,18 +99,18 @@ def handle_disconnect():
 def handle_socket_reaction(data):
     logger.info(f'Received reaction: {data}')
     try:
-        tutor_id = int(data.get('tutor_id'))  # Преобразуем в число
+        tutor_id = int(data.get('tutor_id'))
         reaction_type = data.get('type')
         
-        if not all([tutor_id, reaction_type]):
-            logger.error('Missing required data')
+        if not all([tutor_id, reaction_type]) or reaction_type not in ['like', 'dislike']:
+            logger.error('Invalid reaction data')
             return
             
         # Находим репетитора по ID
         tutor = next((t for t in tutors if t['id'] == tutor_id), None)
         
         if not tutor:
-            logger.error('Tutor not found')
+            logger.error(f'Tutor not found with ID: {tutor_id}')
             return
             
         # Обновляем счетчики
@@ -118,6 +118,8 @@ def handle_socket_reaction(data):
             tutor['likes'] += 1
         elif reaction_type == 'dislike':
             tutor['dislikes'] += 1
+        
+        logger.info(f'Updated tutor {tutor_id} reactions: likes={tutor["likes"]}, dislikes={tutor["dislikes"]}')
         
         # Отправляем обновление всем клиентам
         emit('reaction_update', {

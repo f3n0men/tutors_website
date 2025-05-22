@@ -12,11 +12,11 @@
         <p class="rating">Рейтинг: {{ tutor.rating }}</p>
         <p class="subjects">{{ tutor.subjects }}</p>
         <div class="reaction-buttons" data-tutor-id="{{ tutor.id }}">
-            <button class="like-btn" onclick="handleReaction({{ tutor.id }}, 'like')">
+            <button class="reaction-btn" data-type="like">
                 <i class="fas fa-thumbs-up"></i>
                 <span class="likes-count">{{ tutor.likes }}</span>
             </button>
-            <button class="dislike-btn" onclick="handleReaction({{ tutor.id }}, 'dislike')">
+            <button class="reaction-btn" data-type="dislike">
                 <i class="fas fa-thumbs-down"></i>
                 <span class="dislikes-count">{{ tutor.dislikes }}</span>
             </button>
@@ -30,30 +30,60 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
     const socket = io();
-
+    
+    // Обработка подключения к серверу
     socket.on('connect', () => {
         console.log('Connected to server');
     });
 
+    // Обработка обновлений реакций
     socket.on('reaction_update', (data) => {
         console.log('Received reaction update:', data);
         const tutorCard = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
         if (tutorCard) {
-            tutorCard.querySelector('.likes-count').textContent = data.likes;
-            tutorCard.querySelector('.dislikes-count').textContent = data.dislikes;
+            const likesCount = tutorCard.querySelector('.likes-count');
+            const dislikesCount = tutorCard.querySelector('.dislikes-count');
+            
+            if (likesCount) likesCount.textContent = data.likes;
+            if (dislikesCount) dislikesCount.textContent = data.dislikes;
         }
     });
 
-    function handleReaction(tutorId, type) {
-        console.log('Sending reaction:', { tutor_id: tutorId, type: type });
-        socket.emit('reaction', { tutor_id: tutorId, type: type });
-    }
+    // Добавляем обработчики для всех кнопок реакций
+    document.querySelectorAll('.reaction-buttons').forEach(container => {
+        const tutorId = container.dataset.tutorId;
+        
+        container.querySelectorAll('.reaction-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const type = button.dataset.type;
+                console.log('Sending reaction:', { tutor_id: tutorId, type: type });
+                socket.emit('reaction', { tutor_id: tutorId, type: type });
+            });
+        });
+    });
 </script>
 
 <style>
+    .tutors-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        padding: 2rem;
+    }
+
+    .tutor-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        padding: 1rem;
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+
     .reaction-buttons {
         display: flex;
-        gap: 10px;
+        justify-content: center;
+        gap: 1rem;
         margin-top: 15px;
     }
 
@@ -62,27 +92,33 @@
         align-items: center;
         gap: 5px;
         padding: 8px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
 
-    .reaction-btn i {
-        font-size: 1.1em;
-    }
-
+    .reaction-btn[data-type="like"]:hover,
     .reaction-btn[data-type="like"].active {
         background-color: #28a745;
         border-color: #28a745;
         color: white;
     }
 
+    .reaction-btn[data-type="dislike"]:hover,
     .reaction-btn[data-type="dislike"].active {
         background-color: #dc3545;
         border-color: #dc3545;
         color: white;
     }
 
-    .reaction-btn:disabled:not(.active) {
-        opacity: 0.7;
-        cursor: not-allowed;
+    .reaction-btn i {
+        font-size: 1.1em;
+    }
+
+    .reaction-btn span {
+        margin-left: 5px;
     }
 </style>
 {% endblock %}
