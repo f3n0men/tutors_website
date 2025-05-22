@@ -1,0 +1,29 @@
+[
+    {
+        "id": 1,
+        "name": "Иван Иванов",
+        "rating": 4.9,
+        "subjects": "Математика, Физика",
+        "image": "tutor1.jpg",
+        "likes": 0,
+        "dislikes": 0
+    },
+    {
+        "id": 2,
+        "name": "Мария Петрова",
+        "rating": 4.7,
+        "subjects": "Английский язык",
+        "image": "tutor2.jpg",
+        "likes": 0,
+        "dislikes": 0
+    },
+    {
+        "id": 3,
+        "name": "Алексей Сидоров",
+        "rating": 4.8,
+        "subjects": "Информатика",
+        "image": "tutor3.jpg",
+        "likes": 0,
+        "dislikes": 0
+    }
+] 
