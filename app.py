@@ -7,6 +7,7 @@ import requests
 import logging
 from config import config
 import json
+from functools import wraps
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -216,7 +217,7 @@ def register():
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
-        role = request.form['role']
+        role = 'admin' if not users else 'user'  # Первый зарегистрированный пользователь становится админом
 
         if email in users:
             flash('Этот email уже зарегистрирован.', 'danger')
@@ -229,9 +230,7 @@ def register():
             'avatar': None
         }
         
-        # Сохраняем обновленные данные пользователей
         save_data(USERS_FILE, users)
-
         flash('Регистрация успешна!', 'success')
         return redirect(url_for('login'))
 
@@ -308,6 +307,96 @@ def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message}
     requests.post(url, data=payload)
+
+def is_admin():
+    """Проверяет, является ли текущий пользователь администратором"""
+    user_email = session.get('user_email')
+    if not user_email:
+        return False
+    user = users.get(user_email)
+    return user and user.get('role') == 'admin'
+
+def admin_required(f):
+    """Декоратор для проверки прав администратора"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not is_admin():
+            flash('Доступ запрещен. Требуются права администратора.', 'danger')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin')
+@admin_required
+def admin_panel():
+    """Панель администратора"""
+    return render_template('admin.html', users=users)
+
+@app.route('/admin/change-role', methods=['POST'])
+@admin_required
+def change_role():
+    """Изменение роли пользователя"""
+    email = request.form.get('email')
+    new_role = request.form.get('role')
+    
+    if not email or not new_role or new_role not in ['user', 'admin']:
+        flash('Неверные параметры запроса.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    if email not in users:
+        flash('Пользователь не найден.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    # Запрещаем администратору понизить свою роль
+    if email == session.get('user_email') and new_role != 'admin':
+        flash('Вы не можете понизить свою роль.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    users[email]['role'] = new_role
+    save_data(USERS_FILE, users)
+    flash(f'Роль пользователя {email} изменена на {new_role}.', 'success')
+    return redirect(url_for('admin_panel'))
+
+@app.route('/admin/delete-user', methods=['POST'])
+@admin_required
+def delete_user():
+    """Удаление пользователя"""
+    email = request.form.get('email')
+    
+    if not email:
+        flash('Email не указан.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    if email not in users:
+        flash('Пользователь не найден.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    # Запрещаем администратору удалить самого себя
+    if email == session.get('user_email'):
+        flash('Вы не можете удалить свой аккаунт.', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    # Удаляем аватар пользователя, если он есть
+    user = users[email]
+    if user.get('avatar'):
+        avatar_path = os.path.join('static', 'avatars', user['avatar'])
+        try:
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+        except Exception as e:
+            logger.error(f"Error removing avatar: {e}")
+    
+    # Удаляем реакции пользователя
+    if email in reactions:
+        del reactions[email]
+        save_data(REACTIONS_FILE, reactions)
+    
+    # Удаляем пользователя
+    del users[email]
+    save_data(USERS_FILE, users)
+    
+    flash(f'Пользователь {email} успешно удален.', 'success')
+    return redirect(url_for('admin_panel'))
 
 if __name__ == '__main__':
     # Настройка порта для Railway

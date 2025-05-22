@@ -71,6 +71,9 @@
                     <a class="dropdown-item" href="{{ url_for('contact') }}">Контакты</a>
                     {% if 'user_email' in session %}
                         <a class="dropdown-item" href="{{ url_for('profile') }}">Профиль</a>
+                        {% if user and user.role == 'admin' %}
+                        <a class="dropdown-item" href="{{ url_for('admin_panel') }}">Панель администратора</a>
+                        {% endif %}
                         <a class="dropdown-item" href="{{ url_for('logout') }}">Выйти</a>
                     {% else %}
                         <a class="dropdown-item" href="{{ url_for('login') }}">Войти</a>
