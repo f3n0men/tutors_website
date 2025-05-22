@@ -29,35 +29,56 @@
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
-    const socket = io();
-    
-    // Обработка подключения к серверу
-    socket.on('connect', () => {
-        console.log('Connected to server');
-    });
-
-    // Обработка обновлений реакций
-    socket.on('reaction_update', (data) => {
-        console.log('Received reaction update:', data);
-        const tutorCard = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
-        if (tutorCard) {
-            const likesCount = tutorCard.querySelector('.likes-count');
-            const dislikesCount = tutorCard.querySelector('.dislikes-count');
-            
-            if (likesCount) likesCount.textContent = data.likes;
-            if (dislikesCount) dislikesCount.textContent = data.dislikes;
-        }
-    });
-
-    // Добавляем обработчики для всех кнопок реакций
-    document.querySelectorAll('.reaction-buttons').forEach(container => {
-        const tutorId = container.dataset.tutorId;
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Page loaded, initializing Socket.IO...');
         
-        container.querySelectorAll('.reaction-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                const type = button.dataset.type;
-                console.log('Sending reaction:', { tutor_id: tutorId, type: type });
-                socket.emit('reaction', { tutor_id: tutorId, type: type });
+        // Инициализация Socket.IO с явным указанием URL
+        const socket = io(window.location.origin, {
+            transports: ['websocket'],
+            upgrade: false
+        });
+        
+        // Обработка подключения к серверу
+        socket.on('connect', () => {
+            console.log('Successfully connected to Socket.IO server');
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket.IO connection error:', error);
+        });
+
+        // Обработка обновлений реакций
+        socket.on('reaction_update', (data) => {
+            console.log('Received reaction update:', data);
+            const tutorCard = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
+            if (tutorCard) {
+                const likesCount = tutorCard.querySelector('.likes-count');
+                const dislikesCount = tutorCard.querySelector('.dislikes-count');
+                
+                if (likesCount) likesCount.textContent = data.likes;
+                if (dislikesCount) dislikesCount.textContent = data.dislikes;
+                
+                console.log(`Updated counts for tutor ${data.tutor_id}: likes=${data.likes}, dislikes=${data.dislikes}`);
+            }
+        });
+
+        // Добавляем обработчики для всех кнопок реакций
+        document.querySelectorAll('.reaction-buttons').forEach(container => {
+            const tutorId = container.dataset.tutorId;
+            
+            container.querySelectorAll('.reaction-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const type = button.dataset.type;
+                    console.log('Button clicked:', { tutor_id: tutorId, type: type });
+                    
+                    // Добавляем визуальный отклик
+                    button.classList.add('active');
+                    setTimeout(() => button.classList.remove('active'), 200);
+                    
+                    // Отправляем событие на сервер
+                    socket.emit('reaction', { tutor_id: tutorId, type: type });
+                });
             });
         });
     });

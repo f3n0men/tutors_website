@@ -33,10 +33,11 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode=None,
     logger=True,
-    engineio_logger=True,
-    ping_timeout=5000,
-    ping_interval=25000
+    engineio_logger=True
 )
+
+# Глобальный словарь для хранения реакций
+reactions = {}
 
 # Данные о репетиторах
 tutors = [
@@ -84,6 +85,7 @@ def home():
 def handle_connect():
     logger.info('Client connected')
     # Отправляем текущие данные при подключении
+    emit('connection_success', {'status': 'connected'})
     for tutor in tutors:
         emit('reaction_update', {
             'tutor_id': tutor['id'],
@@ -116,20 +118,23 @@ def handle_socket_reaction(data):
         # Обновляем счетчики
         if reaction_type == 'like':
             tutor['likes'] += 1
+            logger.info(f'Increased likes for tutor {tutor_id} to {tutor["likes"]}')
         elif reaction_type == 'dislike':
             tutor['dislikes'] += 1
-        
-        logger.info(f'Updated tutor {tutor_id} reactions: likes={tutor["likes"]}, dislikes={tutor["dislikes"]}')
+            logger.info(f'Increased dislikes for tutor {tutor_id} to {tutor["dislikes"]}')
         
         # Отправляем обновление всем клиентам
-        emit('reaction_update', {
+        response_data = {
             'tutor_id': tutor_id,
             'likes': tutor['likes'],
             'dislikes': tutor['dislikes']
-        }, broadcast=True)
+        }
+        logger.info(f'Broadcasting update: {response_data}')
+        emit('reaction_update', response_data, broadcast=True)
         
     except Exception as e:
         logger.error(f'Error handling socket reaction: {str(e)}')
+        logger.exception(e)
 
 @app.route('/tutors')
 def tutors_page():
@@ -225,7 +230,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     if os.environ.get('FLASK_ENV') == 'production':
         # В production используем gunicorn
-        app.run(host='0.0.0.0', port=port)
+        socketio.run(app, host='0.0.0.0', port=port)
     else:
         # В development используем встроенный сервер Flask с socket.io
         socketio.run(app, host='0.0.0.0', port=port, debug=True)
