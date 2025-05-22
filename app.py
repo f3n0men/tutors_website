@@ -18,13 +18,9 @@ app = Flask(__name__)
 # Загрузка конфигурации
 env = os.environ.get('FLASK_ENV', 'development')
 app.config.from_object(config[env])
-
-# Настройка базы данных
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.environ.get('SECRET_KEY', 'cfd6245c36bd276cff4769d9fce4cf0dbc056f4e1a014c912cb9d23507bb3efe')
+
+# Настройка папки для аватаров
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
@@ -43,6 +39,12 @@ socketio = SocketIO(
     ping_timeout=5000,
     ping_interval=25000
 )
+
+# Настройка базы данных
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
+if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
+    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Инициализация базы данных
 db = SQLAlchemy(app)
@@ -89,10 +91,11 @@ class Tutor(db.Model):
     dislikes = db.Column(db.Integer, default=0)
     reactions = db.relationship('UserReaction', backref='tutor', lazy=True)
 
+# Данные о репетиторах
 tutors = [
-    {"name": "Иван Иванов", "rating": 4.9, "subjects": "Математика, Физика", "image": "tutor1.jpg"},
-    {"name": "Мария Петрова", "rating": 4.7, "subjects": "Английский язык", "image": "tutor2.jpg"},
-    {"name": "Алексей Сидоров", "rating": 4.8, "subjects": "Информатика", "image": "tutor3.jpg"},
+    {"name": "Иван Иванов", "rating": 4.9, "subjects": "Математика, Физика", "image": "tutor1.jpg", "likes": 0, "dislikes": 0},
+    {"name": "Мария Петрова", "rating": 4.7, "subjects": "Английский язык", "image": "tutor2.jpg", "likes": 0, "dislikes": 0},
+    {"name": "Алексей Сидоров", "rating": 4.8, "subjects": "Информатика", "image": "tutor3.jpg", "likes": 0, "dislikes": 0},
 ]
 
 BOT_TOKEN = '8186615018:AAENdDsVYsPPCQHfdeG17t7kENBrblWXupU'
@@ -184,16 +187,7 @@ def handle_socket_reaction(data):
 
 @app.route('/tutors')
 def tutors_page():
-    try:
-        tutors = Tutor.query.all()
-        user_reactions = {}
-        if 'user_id' in session:
-            reactions = UserReaction.query.filter_by(user_id=session['user_id']).all()
-            user_reactions = {r.tutor_id: r.reaction_type for r in reactions}
-        return render_template('tutors.html', tutors=tutors, user_reactions=user_reactions)
-    except Exception as e:
-        logger.error(f'Error in tutors_page: {str(e)}')
-        return 'Произошла ошибка при загрузке страницы', 500
+    return render_template('tutors.html', tutors=tutors)
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
