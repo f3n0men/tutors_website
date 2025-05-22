@@ -3,6 +3,8 @@
 {% block title %}Репетиторы{% endblock %}
 
 {% block content %}
+<div class="alert-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+
 <h1 class="mb-4">Наши репетиторы</h1>
 <div class="tutors-container">
     {% for tutor in tutors %}
@@ -12,15 +14,18 @@
         <p class="rating">Рейтинг: {{ tutor.rating }}</p>
         <p class="subjects">{{ tutor.subjects }}</p>
         <div class="reaction-buttons" data-tutor-id="{{ tutor.id }}">
-            <button class="reaction-btn" data-type="like">
+            <button class="reaction-btn" data-type="like" {% if not session.user_email %}disabled{% endif %}>
                 <i class="fas fa-thumbs-up"></i>
                 <span class="likes-count">{{ tutor.likes }}</span>
             </button>
-            <button class="reaction-btn" data-type="dislike">
+            <button class="reaction-btn" data-type="dislike" {% if not session.user_email %}disabled{% endif %}>
                 <i class="fas fa-thumbs-down"></i>
                 <span class="dislikes-count">{{ tutor.dislikes }}</span>
             </button>
         </div>
+        {% if not session.user_email %}
+        <p class="text-muted mt-2"><small>Войдите, чтобы оценить репетитора</small></p>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
@@ -32,22 +37,42 @@
     document.addEventListener('DOMContentLoaded', () => {
         console.log('Page loaded, initializing Socket.IO...');
         
-        // Инициализация Socket.IO с явным указанием URL
         const socket = io(window.location.origin, {
             transports: ['websocket'],
             upgrade: false
         });
+
+        // Функция для показа уведомлений
+        function showNotification(message, type = 'error') {
+            const alertContainer = document.querySelector('.alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertContainer.appendChild(alert);
+            
+            // Автоматически скрываем уведомление через 5 секунд
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
         
-        // Обработка подключения к серверу
         socket.on('connect', () => {
             console.log('Successfully connected to Socket.IO server');
         });
 
         socket.on('connect_error', (error) => {
             console.error('Socket.IO connection error:', error);
+            showNotification('Ошибка подключения к серверу');
         });
 
-        // Обработка обновлений реакций
+        socket.on('reaction_error', (data) => {
+            console.error('Reaction error:', data);
+            showNotification(data.message);
+        });
+
         socket.on('reaction_update', (data) => {
             console.log('Received reaction update:', data);
             const tutorCard = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
@@ -57,18 +82,21 @@
                 
                 if (likesCount) likesCount.textContent = data.likes;
                 if (dislikesCount) dislikesCount.textContent = data.dislikes;
-                
-                console.log(`Updated counts for tutor ${data.tutor_id}: likes=${data.likes}, dislikes=${data.dislikes}`);
             }
         });
 
-        // Добавляем обработчики для всех кнопок реакций
         document.querySelectorAll('.reaction-buttons').forEach(container => {
             const tutorId = container.dataset.tutorId;
             
             container.querySelectorAll('.reaction-btn').forEach(button => {
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
+                    
+                    if (button.disabled) {
+                        showNotification('Войдите, чтобы оценить репетитора');
+                        return;
+                    }
+                    
                     const type = button.dataset.type;
                     console.log('Button clicked:', { tutor_id: tutorId, type: type });
                     
@@ -85,6 +113,26 @@
 </script>
 
 <style>
+    .alert-container {
+        max-width: 400px;
+    }
+
+    .alert {
+        margin-bottom: 10px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
     .tutors-container {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -120,14 +168,19 @@
         transition: all 0.3s ease;
     }
 
-    .reaction-btn[data-type="like"]:hover,
+    .reaction-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .reaction-btn[data-type="like"]:not(:disabled):hover,
     .reaction-btn[data-type="like"].active {
         background-color: #28a745;
         border-color: #28a745;
         color: white;
     }
 
-    .reaction-btn[data-type="dislike"]:hover,
+    .reaction-btn[data-type="dislike"]:not(:disabled):hover,
     .reaction-btn[data-type="dislike"].active {
         background-color: #dc3545;
         border-color: #dc3545;
