@@ -4,30 +4,22 @@
 
 {% block content %}
 <h1 class="mb-4">Наши репетиторы</h1>
-<div class="row">
+<div class="tutors-container">
     {% for tutor in tutors %}
-    <div class="col-md-4 mb-4">
-        <div class="card">
-            <img src="{{ url_for('static', filename=tutor.image) }}" class="card-img-top" alt="{{ tutor.name }}">
-            <div class="card-body">
-                <h5 class="card-title">{{ tutor.name }}</h5>
-                <p class="card-text">Рейтинг: {{ tutor.rating }}</p>
-                <p class="card-text">Предметы: {{ tutor.subjects }}</p>
-                <div class="reaction-buttons" data-tutor-id="{{ tutor.id }}">
-                    <button class="btn btn-outline-success btn-sm reaction-btn {% if tutor.id in user_reactions and user_reactions[tutor.id] == 'like' %}active{% endif %}" 
-                            data-type="like" 
-                            {% if not session.get('user_id') %}disabled title="Войдите, чтобы оставить реакцию"{% endif %}>
-                        <i class="fas fa-thumbs-up"></i>
-                        <span class="likes-count">{{ tutor.likes }}</span>
-                    </button>
-                    <button class="btn btn-outline-danger btn-sm reaction-btn {% if tutor.id in user_reactions and user_reactions[tutor.id] == 'dislike' %}active{% endif %}" 
-                            data-type="dislike"
-                            {% if not session.get('user_id') %}disabled title="Войдите, чтобы оставить реакцию"{% endif %}>
-                        <i class="fas fa-thumbs-down"></i>
-                        <span class="dislikes-count">{{ tutor.dislikes }}</span>
-                    </button>
-                </div>
-            </div>
+    <div class="tutor-card">
+        <img src="{{ url_for('static', filename=tutor.image) }}" alt="{{ tutor.name }}">
+        <h3>{{ tutor.name }}</h3>
+        <p class="rating">Рейтинг: {{ tutor.rating }}</p>
+        <p class="subjects">{{ tutor.subjects }}</p>
+        <div class="reaction-buttons" data-tutor-id="{{ tutor.id }}">
+            <button class="like-btn" onclick="handleReaction({{ tutor.id }}, 'like')">
+                <i class="fas fa-thumbs-up"></i>
+                <span class="likes-count">{{ tutor.likes }}</span>
+            </button>
+            <button class="dislike-btn" onclick="handleReaction({{ tutor.id }}, 'dislike')">
+                <i class="fas fa-thumbs-down"></i>
+                <span class="dislikes-count">{{ tutor.dislikes }}</span>
+            </button>
         </div>
     </div>
     {% endfor %}
@@ -37,149 +29,25 @@
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
-    let socket;
-    let isConnected = false;
-    const userId = {{ session.get('user_id', 'null') }};
-    const userReactions = new Set();
+    const socket = io();
 
-    function connectWebSocket() {
-        if (socket) {
-            socket.disconnect();
-        }
-
-        socket = io({
-            transports: ['websocket', 'polling'],
-            upgrade: true,
-            reconnection: true,
-            reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 20000
-        });
-
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket');
-            isConnected = true;
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from WebSocket');
-            isConnected = false;
-            setTimeout(connectWebSocket, 5000); // Попытка переподключения через 5 секунд
-        });
-
-        socket.on('reaction_update', function(data) {
-            if (!data || !data.tutor_id) return;
-            
-            const container = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
-            if (!container) return;
-
-            const likesCount = container.querySelector('.likes-count');
-            const dislikesCount = container.querySelector('.dislikes-count');
-            const likeBtn = container.querySelector('[data-type="like"]');
-            const dislikeBtn = container.querySelector('[data-type="dislike"]');
-
-            // Обновляем счетчики
-            if (likesCount) likesCount.textContent = data.likes;
-            if (dislikesCount) dislikesCount.textContent = data.dislikes;
-
-            // Если это реакция текущего пользователя
-            if (data.user_id === userId) {
-                userReactions.add(data.tutor_id);
-                likeBtn.disabled = true;
-                dislikeBtn.disabled = true;
-                
-                if (data.type === 'like') {
-                    likeBtn.classList.add('active');
-                    dislikeBtn.classList.remove('active');
-                } else {
-                    dislikeBtn.classList.add('active');
-                    likeBtn.classList.remove('active');
-                }
-            }
-        });
-
-        socket.on('connect_error', (error) => {
-            console.log('Connection error:', error);
-            isConnected = false;
-        });
-
-        socket.on('error', (error) => {
-            console.log('Socket error:', error);
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация начального состояния
-        document.querySelectorAll('.reaction-buttons').forEach(container => {
-            const tutorId = container.dataset.tutorId;
-            const likeBtn = container.querySelector('[data-type="like"]');
-            const dislikeBtn = container.querySelector('[data-type="dislike"]');
-            
-            if (likeBtn.classList.contains('active') || dislikeBtn.classList.contains('active')) {
-                userReactions.add(tutorId);
-                likeBtn.disabled = true;
-                dislikeBtn.disabled = true;
-            }
-        });
-        
-        connectWebSocket();
-
-        document.querySelectorAll('.reaction-btn').forEach(button => {
-            button.addEventListener('click', async function(event) {
-                event.preventDefault();
-                
-                if (!userId) {
-                    alert('Пожалуйста, войдите в систему, чтобы оставить реакцию');
-                    return;
-                }
-                
-                const container = this.closest('.reaction-buttons');
-                const tutorId = container.dataset.tutorId;
-                
-                if (userReactions.has(tutorId)) {
-                    alert('Вы уже оценили этого репетитора');
-                    return;
-                }
-
-                const type = this.dataset.type;
-                const allButtons = container.querySelectorAll('.reaction-btn');
-                allButtons.forEach(btn => btn.disabled = true);
-
-                try {
-                    if (isConnected) {
-                        socket.emit('reaction', {
-                            tutor_id: tutorId,
-                            type: type,
-                            user_id: userId
-                        });
-                    }
-
-                    const response = await fetch('/api/reaction', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            tutor_id: tutorId,
-                            type: type
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        throw new Error(data.error || 'Произошла ошибка');
-                    }
-
-                    // Успешная реакция обрабатывается через WebSocket
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert(error.message || 'Произошла ошибка при отправке реакции');
-                    allButtons.forEach(btn => btn.disabled = false);
-                }
-            });
-        });
+    socket.on('connect', () => {
+        console.log('Connected to server');
     });
+
+    socket.on('reaction_update', (data) => {
+        console.log('Received reaction update:', data);
+        const tutorCard = document.querySelector(`.reaction-buttons[data-tutor-id="${data.tutor_id}"]`);
+        if (tutorCard) {
+            tutorCard.querySelector('.likes-count').textContent = data.likes;
+            tutorCard.querySelector('.dislikes-count').textContent = data.dislikes;
+        }
+    });
+
+    function handleReaction(tutorId, type) {
+        console.log('Sending reaction:', { tutor_id: tutorId, type: type });
+        socket.emit('reaction', { tutor_id: tutorId, type: type });
+    }
 </script>
 
 <style>

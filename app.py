@@ -78,11 +78,18 @@ def allowed_file(filename):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', user=users.get(session.get('user_email')))
 
 @socketio.on('connect')
 def handle_connect():
     logger.info('Client connected')
+    # Отправляем текущие данные при подключении
+    for tutor in tutors:
+        emit('reaction_update', {
+            'tutor_id': tutor['id'],
+            'likes': tutor['likes'],
+            'dislikes': tutor['dislikes']
+        })
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -92,7 +99,7 @@ def handle_disconnect():
 def handle_socket_reaction(data):
     logger.info(f'Received reaction: {data}')
     try:
-        tutor_id = data.get('tutor_id')
+        tutor_id = int(data.get('tutor_id'))  # Преобразуем в число
         reaction_type = data.get('type')
         
         if not all([tutor_id, reaction_type]):
@@ -124,7 +131,7 @@ def handle_socket_reaction(data):
 
 @app.route('/tutors')
 def tutors_page():
-    return render_template('tutors.html', tutors=tutors)
+    return render_template('tutors.html', tutors=tutors, user=users.get(session.get('user_email')))
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -140,7 +147,7 @@ def contact():
         send_to_telegram(text)
         return redirect(url_for('contact'))
 
-    return render_template('contact.html')
+    return render_template('contact.html', user=users.get(session.get('user_email')))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():

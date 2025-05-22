@@ -98,3 +98,78 @@ footer {
 .lead {
     color: #0e0e3d;
 }
+
+.tutors-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+}
+
+.tutor-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.tutor-card:hover {
+    transform: translateY(-5px);
+}
+
+.tutor-card img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+}
+
+.tutor-card h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.tutor-card .rating {
+    color: #f0ad4e;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.tutor-card .subjects {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.reaction-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.like-btn, .dislike-btn {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.like-btn:hover {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.dislike-btn:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.likes-count, .dislikes-count {
+    margin-left: 0.5rem;
+}
