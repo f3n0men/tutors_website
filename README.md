@@ -22,8 +22,8 @@
 
 1. Клонировать репозиторий:
 ```bash
-git clone https://github.com/ваш-username/сайт-репетиторов.git
-cd сайт-репетиторов
+git clone https://github.com/f3n0men/tutor-website.git
+cd tutor-website
 ```
 
 2. Создать виртуальное окружение и установить зависимости:
